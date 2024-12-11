@@ -57,15 +57,8 @@ function AltairComponent() {
       },
       tools: [
         // there is a free-tier quota for search
-        //{ googleSearch: {} },
-        {
-          functionDeclarations: [
-            {
-              name: "take_photo",
-              description: "Call to trigger taking a photo",
-            },
-          ],
-        },
+        { googleSearch: {} },
+        { functionDeclarations: [declaration] },
       ],
     });
   }, [setConfig]);
