@@ -34,7 +34,7 @@ function WeatherComponent() {
   const { client } = useLiveAPIContext();
 
   useEffect(() => {
-    const onToolCall = (toolCall: LiveServerToolCall) => {
+    const onToolCall = async (toolCall: LiveServerToolCall) => {
       if (!toolCall.functionCalls) {
         return;
       }
