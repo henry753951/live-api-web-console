@@ -18,36 +18,90 @@ import { useRef, useState } from "react";
 import "./App.scss";
 import { LiveAPIProvider } from "./contexts/LiveAPIContext";
 import SidePanel from "./components/side-panel/SidePanel";
-import { Altair } from "./components/altair/Altair";
 import ControlTray from "./components/control-tray/ControlTray";
 import cn from "classnames";
 import { LiveClientOptions } from "./types";
+import { LiveConnectConfig, Modality } from "@google/genai";
 
+// ===============================
+//
+// TOOL 定義完可以在這裡添加
+//
+// ===============================
+import {
+  Altair,
+  declaration as render_altair_declaration,
+} from "./components/tools/altair/Altair";
+
+import {
+  Weather,
+  declaration as render_weather_declaration,
+} from "./components/tools/weather/Weather";
+
+// ===============================
+
+// ===============================
+//
+// 參數設定
+//
+// ===============================
 const API_KEY = process.env.REACT_APP_GEMINI_API_KEY as string;
+console.log("API_KEY", API_KEY);
 if (typeof API_KEY !== "string") {
   throw new Error("set REACT_APP_GEMINI_API_KEY in .env");
 }
 
+const model = "models/gemini-2.5-flash-preview-native-audio-dialog";
 const apiOptions: LiveClientOptions = {
   apiKey: API_KEY,
+  httpOptions: {
+    apiVersion: model.includes("native") ? "v1alpha" : undefined,
+  },
 };
 
+const defaultConfig: LiveConnectConfig = {
+  responseModalities: [Modality.AUDIO],
+  speechConfig: {
+    voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
+  },
+  systemInstruction: {
+    parts: [
+      {
+        text: 'You are my helpful assistant. Any time I ask you for a graph call the "render_altair" function I have provided you. Dont ask for additional information just make your best judgement.',
+      },
+    ],
+  },
+  tools: [
+    // there is a free-tier quota for search
+    { googleSearch: {} },
+    {
+      functionDeclarations: [
+        render_altair_declaration,
+        render_weather_declaration,
+      ],
+    },
+  ],
+};
+// ===============================
+
 function App() {
-  // this video reference is used for displaying the active stream, whether that is the webcam or screen capture
-  // feel free to style as you see fit
+  const [config, setConfig] = useState<LiveConnectConfig>({
+    ...defaultConfig,
+  });
   const videoRef = useRef<HTMLVideoElement>(null);
-  // either the screen capture, the video or null, if null we hide it
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
 
   return (
     <div className="App">
-      <LiveAPIProvider options={apiOptions}>
+      <LiveAPIProvider options={apiOptions} config={config} model={model}>
         <div className="streaming-console">
           <SidePanel />
           <main>
             <div className="main-app-area">
-              {/* APP goes here */}
+              {/* Tool components */}
               <Altair />
+              <Weather />
+              {/* End Tool components */}
               <video
                 className={cn("stream", {
                   hidden: !videoRef.current || !videoStream,

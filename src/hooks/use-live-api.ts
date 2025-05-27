@@ -20,7 +20,7 @@ import { LiveClientOptions } from "../types";
 import { AudioStreamer } from "../lib/audio-streamer";
 import { audioContext } from "../lib/utils";
 import VolMeterWorket from "../lib/worklets/vol-meter";
-import { LiveConnectConfig } from "@google/genai";
+import { LiveConnectConfig, Modality } from "@google/genai";
 
 export type UseLiveAPIResults = {
   client: GenAILiveClient;
@@ -38,7 +38,9 @@ export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
   const client = useMemo(() => new GenAILiveClient(options), [options]);
   const audioStreamerRef = useRef<AudioStreamer | null>(null);
 
-  const [model, setModel] = useState<string>("models/gemini-2.0-flash-exp");
+  const [model, setModel] = useState<string>(
+    "models/gemini-2.5-flash-preview-native-audio-dialog"
+  );
   const [config, setConfig] = useState<LiveConnectConfig>({});
   const [connected, setConnected] = useState(false);
   const [volume, setVolume] = useState(0);
@@ -82,7 +84,10 @@ export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
       .on("open", onOpen)
       .on("close", onClose)
       .on("interrupted", stopAudioStreamer)
-      .on("audio", onAudio);
+      .on("audio", onAudio)
+      .on("log", (content) => {
+        console.log("content", content);
+      });
 
     return () => {
       client
@@ -91,6 +96,7 @@ export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
         .off("close", onClose)
         .off("interrupted", stopAudioStreamer)
         .off("audio", onAudio)
+        .off("log")
         .disconnect();
     };
   }, [client]);
@@ -106,6 +112,7 @@ export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
   const disconnect = useCallback(async () => {
     client.disconnect();
     setConnected(false);
+    audioStreamerRef.current?.stop();
   }, [setConnected, client]);
 
   return {
