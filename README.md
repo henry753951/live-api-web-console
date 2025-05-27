@@ -20,3 +20,12 @@ src/
 REACT_APP_GEMINI_API_KEY=''
 # create your own GoogleMaps API Key at https://developers.google.com/maps/documentation/javascript/get-api-key
 REACT_APP_GOOGLE_MAPS_API_KEY=''
+```
+
+## 開發環境啟動
+在專案根目錄下執行以下命令以啟動開發環境：
+
+```bash
+npm install
+npm start
+```
