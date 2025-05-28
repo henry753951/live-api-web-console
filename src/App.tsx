@@ -46,8 +46,7 @@ import {
 //
 // ===============================
 const API_KEY = process.env.REACT_APP_GEMINI_API_KEY as string;
-console.log("API_KEY", API_KEY);
-if (typeof API_KEY !== "string") {
+if (!API_KEY) {
   throw new Error("set REACT_APP_GEMINI_API_KEY in .env");
 }
 

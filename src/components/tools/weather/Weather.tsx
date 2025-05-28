@@ -2,8 +2,13 @@ import { useEffect, useState, memo } from "react";
 import { useLiveAPIContext } from "../../../contexts/LiveAPIContext";
 import { FunctionDeclaration, LiveServerToolCall, Type } from "@google/genai";
 
+const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+if (!GOOGLE_MAPS_API_KEY) {
+  throw new Error("set REACT_APP_GOOGLE_MAPS_API_KEY in .env");
+}
+
 export interface WeatherData {
-  weather_code: "sunny" | "cloudy" | "rainy" | "snowy";
+  text: string;
   temperature: number;
   humidity: number;
   position: {
@@ -43,16 +48,56 @@ function WeatherComponent() {
       );
       if (fc) {
         const position = (fc.args as any).position;
-        const cordsApiUrl = `xxx`;
-        const [latitude, longitude] = [0, 0];
-        const weatherApiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m`;
+        const cordsApiUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+          position
+        )}&key=${GOOGLE_MAPS_API_KEY}`;
+        const cordsData = await fetch(cordsApiUrl).then((res) => res.json());
+        if (!cordsData || cordsData.status !== "OK") {
+          console.error("Failed to fetch coordinates:", cordsData);
+          client.sendToolResponse({
+            functionResponses: [
+              {
+                response: {
+                  success: false,
+                  error: "Failed to fetch coordinates.",
+                },
+                id: fc.id,
+                name: fc.name,
+              },
+            ],
+          });
+          return;
+        }
+        const location = cordsData.results[0].geometry.location;
+        const [latitude, longitude] = [location.lat, location.lng];
+
+        const weatherApiUrl = `https://weather.googleapis.com/v1/currentConditions:lookup?key=${GOOGLE_MAPS_API_KEY}&location.latitude=${latitude}&location.longitude=${longitude}`;
+        const weatherDataResponse = await fetch(weatherApiUrl).then((res) =>
+          res.json()
+        );
+        if (!weatherDataResponse || !weatherDataResponse) {
+          console.error("Failed to fetch weather data:", weatherDataResponse);
+          client.sendToolResponse({
+            functionResponses: [
+              {
+                response: {
+                  success: false,
+                  error: "Failed to fetch weather data.",
+                },
+                id: fc.id,
+                name: fc.name,
+              },
+            ],
+          });
+          return;
+        }
         const data: WeatherData = {
-          weather_code: "sunny",
-          temperature: 25,
-          humidity: 60,
+          text: weatherDataResponse.weatherCondition.description.text,
+          temperature: weatherDataResponse.temperature.degrees,
+          humidity: weatherDataResponse.relativeHumidity,
           position: {
-            latitude,
-            longitude,
+            latitude: latitude,
+            longitude: longitude,
             name: position,
           },
         };
@@ -61,7 +106,7 @@ function WeatherComponent() {
         client.sendToolResponse({
           functionResponses: [
             {
-              response: { output: data },
+              response: { output: weatherDataResponse },
               id: fc.id,
               name: fc.name,
             },
@@ -85,9 +130,9 @@ function WeatherComponent() {
       {weatherData ? (
         <div>
           <h3>Weather Information</h3>
+          <p>{weatherData.text}</p>
           <p>Location: {weatherData.position.name}</p>
           <p>Temperature: {weatherData.temperature}°C</p>
-          <p>Condition: {weatherData.weather_code}</p>
           <p>Humidity: {weatherData.humidity}%</p>
         </div>
       ) : (
